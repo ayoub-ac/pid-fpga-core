@@ -8,13 +8,12 @@ it from a VHDL design that does not want to touch SystemVerilog directly.
 
 **Wrapper only.** The PID datapath, integrator, and saturating clamp
 all live in `rtl/*.sv` and are instantiated as a SystemVerilog
-black-box. Mixed-language elaboration is supported by every commercial
-simulator and synthesiser the core has been tested against.
+black-box. Mixed-language elaboration requires a simulator or
+synthesiser that supports it; the wrapper has not been verified with
+any specific tool.
 
-A pure VHDL re-implementation of the datapath is on the roadmap
-(Premium tier, scope: parity with `rtl/pid_core.sv` including the same
-testbench checks). Until then, treat this directory as a binding layer,
-not as a second implementation.
+No pure VHDL re-implementation of the datapath exists. Treat this
+directory as a binding layer, not as a second implementation.
 
 ## Usage
 
@@ -39,9 +38,9 @@ vcom -2008 vhdl_wrapper/pid_core_vhdl.vhd
 
 ### GHDL + Verilator (open-source co-sim)
 
-GHDL compiles the VHDL side, Verilator compiles the SV side, and the two
-are linked through GHDL's VHPI bridge. The provided `make vhdl-test`
-target wraps this; run it from the repository root:
+The provided `make vhdl-test` target is a smoke check only: GHDL analyses
+the VHDL wrapper and Verilator lints the SV core. It does not link the
+two or run a mixed-language simulation. Run it from the repository root:
 
 ```
 make vhdl-test
@@ -94,8 +93,8 @@ end architecture;
 
 ## What this wrapper does NOT change
 
-* Latency: identical to `pid_core.sv`. 4 cycles between `tick_i` and
-  `valid_o`.
+* Latency: intended to be identical to `pid_core.sv` (4 cycles between
+  `tick_i` and `valid_o`); not verified.
 * Endianness: scalar fields. The byte ordering question doesn't apply
   to integer fixed-point inputs.
 * Reset polarity: still active-low synchronous (`rst_ni`).

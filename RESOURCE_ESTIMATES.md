@@ -1,23 +1,25 @@
 # Resource estimates
 
-Numbers below are from Yosys 0.x generic synthesis (`make synth_report`).
-They are pre-place-and-route. See `SYNTH_REPORT.md` for the most recent
-run; this document explains what dominates the area and how to shrink
-it.
+> **Unverified estimates.** The figures in this file have not been confirmed by a recorded, reproducible synthesis run or by hardware measurement. Treat every LUT, FF, BRAM, DSP, Fmax, throughput, latency and power figure here as an unverified estimate. Run `make synth_report` with your own toolchain to get real numbers.
+
+Numbers below are unverified estimates intended to reflect Yosys generic
+synthesis (`make synth_report`), pre-place-and-route. See
+`SYNTH_REPORT.md`; this document explains what is expected to dominate
+the area and how to shrink it.
 
 ## Summary (post-Yosys, pre-PnR)
 
 | Target                         | Comment |
 |--------------------------------|---------|
-| Lattice iCE40 UP5K             | LUT-heavy: the four signed multipliers (P, I, D, back-calc) cost ~7600 LUT4 because iCE40 has no DSP blocks. Fits on the UP5K (5280 logic tiles is tight; a smaller `GAIN_W` helps). |
+| Lattice iCE40 UP5K             | LUT-heavy: the four signed multipliers (P, I, D, back-calc) cost ~7600 LUT4 (unverified estimate) when mapped to logic rather than DSP blocks. That estimate exceeds the UP5K's 5280 logic cells, so the default configuration may not fit; a smaller `GAIN_W` helps. |
 | Lattice ECP5 LFE5UM-25         | ECP5 has MULT18X18 blocks; Yosys with `-abc9` packs the multiplies into them and the soft LUT count drops dramatically (~300 LUT4 plus the DSPs). |
 | Xilinx Artix-7 XC7A35T         | Yosys-generic synthesis here counts LUT6 + CARRY4. Vivado synth_design will fold each multiplier into a single DSP48E1 and the LUT count drops sharply. |
 | Cyclone V 5CSEMA5F31C6         | Quartus folds the multipliers into M9K-backed DSP blocks (one DSP per multiply). ALM count is much lower than the Yosys soft estimate. |
 | Gowin GW1NR-9 (Tang Nano 9K)   | Not characterised here. Vendor flow uses MULT9X9 / MULT18X18 hard blocks; size comparable to ECP5. |
 
 For exact LUT/FF/BRAM numbers run `make synth_report` and read
-`SYNTH_REPORT.md`. The synthesis-comparison report is regenerated on
-every CI build.
+`SYNTH_REPORT.md`. No CI workflow exists in this repository, so the
+report is not regenerated automatically.
 
 ## What dominates the area
 
@@ -44,8 +46,8 @@ every CI build.
   saves about 25% of the multiplier area.
 - **Time-multiplex one multiplier** for P, I, D, and back-calc on
   resource-constrained targets. Costs ~4x latency per tick; the
-  pipeline becomes 16 cycles instead of 4. Available in the Premium
-  tier as a `PID_SHARED_MUL` define.
+  pipeline becomes 16 cycles instead of 4 (unverified estimate). Not
+  implemented in this repository.
 - **Vendor flow with DSP inference**: on Vivado / Quartus / Diamond,
   setting the multiplier registers as input + output pipeline stages
   lets the DSP block absorb both stages. The Yosys-generic estimate is
@@ -53,9 +55,10 @@ every CI build.
 
 ## What you can do to push throughput / accuracy
 
-- **Pipelined multipliers** (Premium): break each 49-bit multiply
-  across 2 stages so the multiplier critical path drops by ~2x. Lifts
-  `f_max` to ~250 MHz on Artix-7 vendor flow.
+- **Pipelined multipliers** (not implemented in this repository):
+  break each 49-bit multiply across 2 stages so the multiplier critical
+  path drops by ~2x. Estimated (unverified) `f_max` ~250 MHz on Artix-7
+  vendor flow.
 - **Increased `ACC_W`** (parameter): widen the integrator accumulator
   to 64 bits if very small `Ki * Ts` values must accumulate over very
   long sessions (hours of regulator running without clear).
@@ -64,6 +67,8 @@ every CI build.
   multiplier per loop. Common pattern in BLDC servo drives.
 
 ## Frequency
+
+All figures in this section are unverified estimates.
 
 - iCE40 UP5K, default toolchain (Yosys + nextpnr), no constraints:
   limited by the 49-bit multiplier carry chain (~30-40 MHz on generic
@@ -75,7 +80,7 @@ every CI build.
 
 ## Power
 
-Ballpark: 10-20 mW dynamic on iCE40 UP5K at 30 MHz, depending on tick
+Unverified estimate (not measured): 10-20 mW dynamic on iCE40 UP5K at 30 MHz, depending on tick
 duty cycle. The four 49-bit multipliers toggle once per `tick_i`; the
 integrator accumulator toggles once per non-frozen tick. Static power
 is dominated by the FPGA itself.

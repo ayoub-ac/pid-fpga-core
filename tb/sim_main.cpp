@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later OR Commercial
+// SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Commercial
 //
 // Verilator C++ harness for pid_core. The host model implements the
 // same fixed-point PID algorithm in software and the loop checks that

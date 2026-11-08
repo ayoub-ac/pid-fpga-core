@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later OR Commercial
+// SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Commercial
 //
 // Functional coverage collector for pid_core. 8 sticky bins recorded
 // across the regression. The C++ harness reads them at end-of-test.

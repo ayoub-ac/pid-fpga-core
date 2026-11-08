@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later OR Commercial
+// SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Commercial
 //
 // Discrete-time PID controller (positional form) with anti-windup,
 // derivative-on-PV, programmable output clamp, and a strobe-driven

@@ -12,45 +12,52 @@ hardware or harm a human (drone motor, industrial valve, medical
 infusion pump, automotive BLDC, mains power converter), read this whole
 document and decide whether the failure modes match your deployment.
 
-## What the RTL guarantees
+## What the RTL is intended to provide (not verified)
+
+None of the properties below has been independently verified in
+simulation, formal proof or hardware. Treat them as design intent.
 
 ### 1. Output stays within `[out_min_i, out_max_i]`
 
-Every published sample is clamped by `pid_saturate.sv` before being
-registered to `u_o`. The clamp is enforced in hardware, not in software
-configuration. An assertion in the testbench (`p_output_within_clamp`)
-fails the regression if `u_o` ever falls outside the configured limits.
+Every published sample is intended to be clamped by `pid_saturate.sv`
+before being registered to `u_o`, in hardware rather than in software
+configuration; not verified. The testbench includes an assertion
+(`p_output_within_clamp`) written to fail the regression if `u_o` falls
+outside the configured limits; results not independently confirmed.
 
 ### 2. Deterministic sample-to-sample latency
 
-The pipeline is fixed at 4 cycles from `tick_i` to `valid_o` regardless
-of the input values, gain values, or saturation state. There is no
-data-dependent timing. This matters for hard-real-time control loops:
-the actuator update jitter is exactly one clock cycle of the system
-clock.
+The pipeline is intended to be fixed at 4 cycles from `tick_i` to
+`valid_o` regardless of the input values, gain values, or saturation
+state, with no data-dependent timing; not verified. This matters for
+hard-real-time control loops: the intended actuator update jitter is
+one clock cycle of the system clock.
 
 ### 3. Bounded integrator with anti-windup
 
 The integrator state is held in a wide `ACC_W = 48`-bit accumulator
 (default). Both anti-windup modes (conditional integration and
 back-calculation) are implemented in RTL and selectable at runtime via
-`awu_mode_i`. The testbench asserts that after a long saturation event,
-the integrator unwinds within a bounded number of ticks; failure to
-unwind would imply runaway integration.
+`awu_mode_i`. The testbench is written to check that after a long
+saturation event the integrator unwinds within a bounded number of
+ticks; results not independently confirmed. Failure to unwind would
+imply runaway integration.
 
 ### 4. Reset clears all state
 
-`rst_ni == 0` synchronously zeroes the integrator state, the pipeline
-registers, and `u_o`. After de-assertion, the first `tick_i` produces
-a sample as if the controller had never run (no leftover integral
-contribution from the previous session).
+`rst_ni == 0` is intended to synchronously zero the integrator state,
+the pipeline registers, and `u_o`, so that after de-assertion the first
+`tick_i` produces a sample as if the controller had never run (no
+leftover integral contribution from the previous session); not
+verified.
 
 ### 5. Synchronous freeze
 
-`freeze_i` halts integrator updates without disturbing P and D. P and
-D continue to respond to setpoint / process-variable changes; only the
-integral state is frozen. The C++ harness exercises this path
-explicitly.
+`freeze_i` is intended to halt integrator updates without disturbing P
+and D; not verified. P and D continue to respond to setpoint /
+process-variable changes; only the integral state is frozen. The C++
+harness includes a test for this path; results not independently
+confirmed.
 
 ## What is NOT covered (be honest)
 
@@ -85,31 +92,34 @@ explicitly.
 
 ## Evaluating the implementation
 
-The testbench covers six independent failure modes:
+The testbench is intended to cover six failure modes. Tests are
+included; results not independently confirmed:
 
-1. **Reference parity** (256 random vectors). The C++ reference
-   implementation matches the DUT bit-exactly across the gain space.
+1. **Reference parity** (256 random vectors). Intended to check that
+   the DUT matches the C++ reference implementation bit-exactly across
+   the gain space.
 2. **Step-response settling** for P-only, PI, PID configurations on a
-   discretised first-order plant. Settling time within the configured
-   bound and overshoot below the configured limit, on every gain set.
-3. **Output clamping** at both rails with the saturation flags
-   asserted exactly when the unclamped output would have exceeded the
-   limit.
+   discretised first-order plant. Intended to check settling time
+   within the configured bound and overshoot below the configured
+   limit, on every gain set.
+3. **Output clamping** at both rails, intended to check that the
+   saturation flags assert exactly when the unclamped output would have
+   exceeded the limit.
 4. **Anti-windup** in both modes: after 200 ticks of saturating
    command, sign-flipping the error must un-stick the output within
-   <= 50 ticks. Both modes pass.
+   <= 50 ticks.
 5. **Reset mid-run**: assert `rst_ni` while the controller is
    integrating, and verify the first post-reset sample is zero
    (integrator has been cleared).
 6. **Setpoint tracking** with three different gain profiles, each
    reaches a 1% tracking band within a configured number of ticks.
 
-Five SVA properties run on every cycle of every test (clamp invariant,
-saturation flag consistency, mutex of `sat_hi` / `sat_lo`, valid
-follows tick within latency, and `tick_age` boundedness). Eight
-functional coverage bins (P_only, PI, PID, sat_hi, sat_lo, normal_op,
-reset_mid_run, freeze_active) reach 100% on every regression. Any
-regression that drops below 100% fails the gate.
+The testbench includes SVA properties (clamp invariant, saturation
+flag consistency, mutex of `sat_hi` / `sat_lo`, valid follows tick
+within latency, and `tick_age` boundedness) and eight functional
+coverage bins (P_only, PI, PID, sat_hi, sat_lo, normal_op,
+reset_mid_run, freeze_active). Whether the properties hold and the
+bins are reached has not been independently confirmed.
 
 ## Safe-deployment checklist
 
@@ -125,12 +135,14 @@ regression that drops below 100% fails the gate.
    transition to discard any leftover integrator state from a previous
    run.
 5. Hold `rst_ni` low for at least 4 cycles after power-on and before
-   the first command. This guarantees the pipeline is clean.
+   the first command. This is intended to leave the pipeline clean; not
+   verified.
 6. Wrap the core in a host-side supervisor that validates gain values
    and watchdog-checks the tick cadence. The hardware does not do this.
 
 ## Reporting issues
 
 Found a functional bug, a discrepancy with classical PID behaviour, or
-a corner case the assertions miss? Open an issue or contact the email
-in the README. We do not currently offer a bug bounty.
+a corner case the assertions miss? Open a GitHub issue (do not include
+confidential details). No support or maintenance is provided. We do not
+currently offer a bug bounty.

@@ -95,8 +95,9 @@ saturating mux selects `out_min_i / out_max_i / sum`.
 | `sat_hi_o` | High while the latest published `u_o` was clamped at `out_max_i`.    |
 | `sat_lo_o` | High while the latest published `u_o` was clamped at `out_min_i`.    |
 
-`sat_hi_o` and `sat_lo_o` are mutually exclusive (an SVA property
-enforces this on every cycle of the regression).
+`sat_hi_o` and `sat_lo_o` are intended to be mutually exclusive (the
+testbench includes an SVA property for this; results not independently
+confirmed).
 
 ## Latency summary
 
@@ -137,6 +138,5 @@ Q15.16 -> float:  `f = q / 65536.0`, signed.
 | `WIDE_W`  | 40      | Internal post-multiply / pre-clamp width.              |
 | `ACC_W`   | 48      | Integrator accumulator width.                         |
 
-The defaults give 16-bit signed I/O and Q15.16 gains, which match the
-spec called out in the project page. For 24-bit DAC outputs, override
+The defaults give 16-bit signed I/O and Q15.16 gains. For 24-bit DAC outputs, override
 `DATA_W = 24` (and update `WIDE_W` and `ACC_W` to maintain headroom).
